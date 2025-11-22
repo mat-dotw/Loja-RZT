@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Loja RZT</title>
+  <style>
+    body {margin:0; font-family: Arial, sans-serif; background:#111; color:white;}
+    header {padding:20px; background:#181818; display:flex; justify-content:space-between; align-items:center;}
+    .logo {font-size:28px; font-weight:bold; color:#0ff;}
+    nav a {color:white; margin:0 10px; text-decoration:none;}
+    .banner {padding:40px; text-align:center; background:#202020; font-size:32px;}
+    .categorias, .produtos {padding:20px; display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:20px;}
+    .cat, .card {padding:20px; background:#1b1b1b; border-radius:10px; text-align:center; cursor:pointer; transition:.3s;}
+    .cat:hover, .card:hover {background:#333;}
+    #loginPage {display:none; padding:40px;}
+    input {padding:10px; width:90%; margin:5px 0; border-radius:5px; border:none;}
+    button {padding:10px 20px; background:#0ff; border:none; border-radius:5px; cursor:pointer; font-weight:bold;}
+    #carrinhoPage {display:none; padding:40px;}
+    .itemCar {background:#1c1c1c; padding:15px; border-radius:8px; margin:10px 0;}
+    #freteBox {margin-top:20px;}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">RZT STORE</div>
+    <nav><button onclick="toggleAdminLogin()" style="background:#0ff;padding:5px 10px;border-radius:6px;margin-right:10px;">Admin</button>
+      <a href="#" onclick="mostrarHome()">Início</a>
+      <a href="#" onclick="mostrarLogin()">Login</a>
+      <a href="#" onclick="mostrarCarrinho()">Carrinho</a>
+    </nav>
+  </header>
+
+  <section id="home">
+    <div class="banner">Bem-vindo à RZT — Tudo Barato e Instantâneo</div>
+
+    <h2 style="padding-left:20px;">Categorias</h2>
+    <div class="categorias">
+      <div class="cat" onclick="abrirCategoria('bots')">Bots</div>
+      <div class="cat" onclick="abrirCategoria('engajamento')">Engajamento</div>
+      <div class="cat" onclick="abrirCategoria('streamings')">Streamings</div>
+      <div class="cat" onclick="abrirCategoria('jogos')">Jogos</div>
+      <div class="cat" onclick="abrirCategoria('premium')">Planos Premium</div>
+    </div>
+
+    <h2 style="padding-left:20px;">Produtos em Destaque</h2>
+    <div class="produtos">
+      <div class="card">Bot Automático – R$ 10 <br><button onclick="addCarrinho('Bot Automático',10)">Comprar</button></div>
+      <div class="card">Engajamento Insta – R$ 5 <br><button onclick="addCarrinho('Engajamento Insta',5)">Comprar</button></div>
+      <div class="card">Netflix Premium – R$ 12 <br><button onclick="addCarrinho('Netflix Premium',12)">Comprar</button></div>
+    </div>
+  </section>
+
+  <section id="loginPage">
+    <h2>Login</h2>
+    <input type="text" id="user" placeholder="Usuário" />
+    <input type="password" id="pass" placeholder="Senha" />
+    <button onclick="logar()">Entrar</button>
+  </section>
+
+  <section id="carrinhoPage">
+    <h2>Seu Carrinho</h2>
+    <div id="itensCarrinho"></div>
+
+    <div id="freteBox">
+      <h3>Calcular Frete</h3>
+      <input type="text" id="cep" placeholder="Digite seu CEP" />
+      <button onclick="calcFrete()">Calcular</button>
+      <p id="freteResultado"></p>
+    </div>
+
+    <button onclick="finalizarCompra()">Finalizar Compra</button>
+  </section>
+
+  <!-- Painel Admin -->
+  <section id="adminPanel" class="hidden p-6 bg-gray-900 text-white" style="display:none;padding:40px;">
+    <h2 class="text-2xl font-bold mb-4">Painel Administrativo RZT</h2>
+    <p>Gerencie usuários, pedidos e configurações.</p>
+
+    <h3 class="text-xl mt-4">Criar Usuário</h3>
+    <input id="newUser" class="p-2 text-black" placeholder="Nome do usuário">
+    <button onclick="addUser()" class="p-2 bg-green-600 rounded">Adicionar</button>
+
+    <ul id="userList" class="mt-2"></ul>
+
+    <h3 class="text-xl mt-6">Configurações de PIX</h3>
+    <label>Chave PIX:</label>
+    <input id="pixKey" class="p-2 text-black" placeholder="Sua chave PIX">
+    <button onclick="savePix()" class="p-2 bg-blue-600 rounded">Salvar</button>
+
+    <h3 class="text-xl mt-6">Métodos de Envio</h3>
+    <button onclick="addShipping()" class="p-2 bg-purple-600 rounded">Adicionar Método</button>
+    <ul id="shipList" class="mt-2"></ul>
+  </section>
+
+  <div id="adminLoginModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);justify-content:center;align-items:center;">
+    <div style="background:#111;padding:30px;border-radius:10px;width:300px;text-align:center;">
+      <h3>Login Admin</h3>
+      <input id="adminPass" type="password" placeholder="Senha admin" style="width:90%;padding:10px;margin:10px 0;">
+      <button onclick="authAdmin()">Entrar</button>
+      <button onclick="toggleAdminLogin()" style="margin-top:10px;background:#444;">Cancelar</button>
+      <p id="adminMsg" style="color:red"></p>
+    </div>
+  </div>
+
+  <script>
+    const users = [];
+    const shipping = [];
+    let pixKeySaved = "";
+    let carrinho = [];
+
+    let ADMIN_PASSWORD = "RZT123";
+
+    function toggleAdminLogin(){
+      const modal = document.getElementById("adminLoginModal");
+      modal.style.display = modal.style.display === "flex" ? "none" : "flex";
+    }
+
+    function authAdmin(){
+      const pwd = document.getElementById("adminPass").value;
+      if(pwd === ADMIN_PASSWORD){
+        document.getElementById("adminMsg").innerText = "";
+        toggleAdminLogin();
+        mostrarAdmin();
+      } else {
+        document.getElementById("adminMsg").innerText = "Senha incorreta";
+      }
+    }
+
+    function mostrarAdmin(){
+      document.getElementById("home").style.display="none";
+      document.getElementById("loginPage").style.display="none";
+      document.getElementById("carrinhoPage").style.display="none";
+      document.getElementById("adminPanel").style.display="block";
+    }
+
+    function mostrarHome(){
+      document.getElementById('home').style.display='block';
+      document.getElementById('loginPage').style.display='none';
+      document.getElementById('carrinhoPage').style.display='none';
+      document.getElementById("adminPanel").style.display="none";
+    }
+    function mostrarLogin(){
+      document.getElementById('home').style.display='none';
+      document.getElementById('loginPage').style.display='block';
+      document.getElementById('carrinhoPage').style.display='none';
+      document.getElementById("adminPanel").style.display="none";
+    }
+    function mostrarCarrinho(){
+      document.getElementById('home').style.display='none';
+      document.getElementById('loginPage').style.display='none';
+      document.getElementById('carrinhoPage').style.display='block';
+      document.getElementById("adminPanel").style.display="none";
+      atualizarCarrinho();
+    }
+
+    function logar(){ alert("Login feito com sucesso!"); mostrarHome(); }
+
+    function addCarrinho(nome, preco){ carrinho.push({nome, preco}); alert("Adicionado ao carrinho!"); }
+
+    function atualizarCarrinho(){
+      const div = document.getElementById('itensCarrinho');
+      div.innerHTML = "";
+      let total = 0;
+      carrinho.forEach(item => {
+        div.innerHTML += `<div class='itemCar'>${item.nome} — R$ ${item.preco}</div>`;
+        total += item.preco;
+      });
+      div.innerHTML += `<h3>Total: R$ ${total}</h3>`;
+    }
+
+    function calcFrete(){
+      const cep = document.getElementById('cep').value;
+      if(cep.length < 8){ document.getElementById('freteResultado').innerText = "CEP inválido"; return; }
+      const valor = Math.floor(Math.random()*10)+5;
+      document.getElementById('freteResultado').innerText = `Frete: R$ ${valor}`;
+    }
+
+    function finalizarCompra(){ alert('Compra finalizada! Obrigado pela preferência.'); }
+
+    function addUser(){
+      const name = document.getElementById("newUser").value;
+      if(name){ users.push(name); updateUsers(); }
+    }
+
+    function updateUsers(){
+      document.getElementById("userList").innerHTML = users.map(u=>`<li>${u}</li>`).join("");
+    }
+
+    function savePix(){
+      pixKeySaved = document.getElementById("pixKey").value;
+      alert("Chave PIX salva!");
+    }
+
+    function addShipping(){
+      const method = prompt("Nome do método de envio:");
+      if(method){
+        shipping.push(method);
+        document.getElementById("shipList").innerHTML = shipping.map(s=>`<li>${s}</li>`).join("");
+      }
+    }
+
+    /* PAGAMENTO DESATIVADO (modo futuro)
+    function pagarPixReal(){ 
+      // (Pagamento desativado) alert("Sistema de pagamento está desativado no momento."); 
+    }
+    */
+  </script>
+</body>
+</html>
